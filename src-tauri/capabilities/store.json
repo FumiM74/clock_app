@@ -1,0 +1,11 @@
+{
+  "identifier": "store",
+  "description": "permissions for @tauri-apps/plugin-store",
+  "windows": [
+    "main",
+    "settings"
+  ],
+  "permissions": [
+    "store:default"
+  ]
+}
