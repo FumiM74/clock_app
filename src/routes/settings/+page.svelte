@@ -224,16 +224,6 @@
   input {
     margin: 0.2rem;
   }
-  .button-wrapper {
-    position: absolute;
-    bottom: -15px;
-    right: 30px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: flex-end;
-    gap: 0.1rem;
-    height: 2.5rem;
-  }
   button {
     margin-top: 1rem;
     font-size: 0.9rem;
