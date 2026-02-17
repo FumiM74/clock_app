@@ -23,6 +23,13 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      - uses: tauri-apps/tauri-action@v0
+      - name: Build with Tauri
+        uses: tauri-apps/tauri-action@v0
         with:
-          uploadArtifacts: true
+          projectPath: src-tauri
+
+      - name: Upload bundles (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-bundles-${{ matrix.os }}
+          path: src-tauri/target/release/bundle/**
