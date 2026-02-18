@@ -29,15 +29,42 @@ jobs:
           projectPath: src-tauri
           includeRelease: true
 
-      # どこに出たかをログで確認（初回だけ入れておくと便利）
-      - name: Show bundle directory
+      # 生成物の場所を確認（mac / win で別々に表示）
+      - name: Show outputs (macOS)
+        if: runner.os == 'macOS'
         shell: bash
         run: |
+          echo "=== src-tauri/target ==="
           ls -la src-tauri/target || true
-          find src-tauri/target -maxdepth 4 -type d -name bundle -print || true
+          echo "=== bundle dirs (if any) ==="
+          find src-tauri/target -maxdepth 5 -type d -name bundle -print || true
+          echo "=== mac artifacts (dmg/app/zip) ==="
+          find src-tauri/target -type f \( -name "*.dmg" -o -name "*.app" -o -name "*.zip" -o -name "*.tar.gz" \) -print || true
 
-      - name: Upload bundles (Artifacts)
+      - name: Show outputs (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo "=== src-tauri/target ==="
+          ls -la src-tauri/target || true
+          echo "=== src-tauri/target/release ==="
+          ls -la src-tauri/target/release || true
+          echo "=== exe/msi/zip under release (maxdepth 5) ==="
+          find src-tauri/target/release -maxdepth 5 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" \) -print || true
+          echo "=== bundle dirs (if any) ==="
+          find src-tauri/target -maxdepth 6 -type d -name bundle -print || true
+
+      # ✅ bundle が無い（targets:["app"]）ケースでも拾えるようにする
+      - name: Upload artifacts (Artifacts)
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-bundles-${{ matrix.os }}
-          path: src-tauri/target/**/bundle/**
+          name: tauri-output-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            src-tauri/target/**/bundle/**
+            src-tauri/target/release/**/*.exe
+            src-tauri/target/release/**/*.msi
+            src-tauri/target/release/**/*.zip
+            src-tauri/target/release/app
+            src-tauri/target/release/app.exe
+            src-tauri/target/release/clock_app.exe
