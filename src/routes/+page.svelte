@@ -103,7 +103,7 @@
 
     const settings = new WebviewWindow("settings", {
       url: "/settings",
-      width: 200,
+      width: 250,
       height: 420,
       resizable: true,
       decorations: true
