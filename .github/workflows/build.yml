@@ -29,42 +29,20 @@ jobs:
           projectPath: src-tauri
           includeRelease: true
 
-      # 生成物の場所を確認（mac / win で別々に表示）
-      - name: Show outputs (macOS)
+      # macOS: （dmg/app等）バンドルが出る想定
+      - name: Upload artifacts (macOS)
         if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          echo "=== src-tauri/target ==="
-          ls -la src-tauri/target || true
-          echo "=== bundle dirs (if any) ==="
-          find src-tauri/target -maxdepth 5 -type d -name bundle -print || true
-          echo "=== mac artifacts (dmg/app/zip) ==="
-          find src-tauri/target -type f \( -name "*.dmg" -o -name "*.app" -o -name "*.zip" -o -name "*.tar.gz" \) -print || true
-
-      - name: Show outputs (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          echo "=== src-tauri/target ==="
-          ls -la src-tauri/target || true
-          echo "=== src-tauri/target/release ==="
-          ls -la src-tauri/target/release || true
-          echo "=== exe/msi/zip under release (maxdepth 5) ==="
-          find src-tauri/target/release -maxdepth 5 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.zip" \) -print || true
-          echo "=== bundle dirs (if any) ==="
-          find src-tauri/target -maxdepth 6 -type d -name bundle -print || true
-
-      # ✅ bundle が無い（targets:["app"]）ケースでも拾えるようにする
-      - name: Upload artifacts (Artifacts)
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-output-${{ matrix.os }}
+          name: tauri-macos
           if-no-files-found: error
-          path: |
-            src-tauri/target/**/bundle/**
-            src-tauri/target/release/**/*.exe
-            src-tauri/target/release/**/*.msi
-            src-tauri/target/release/**/*.zip
-            src-tauri/target/release/app
-            src-tauri/target/release/app.exe
-            src-tauri/target/release/clock_app.exe
+          path: src-tauri/target/**/bundle/**
+
+      # Windows: ポータブル本体だけ（ビルドスクリプト等を拾わない）
+      - name: Upload artifacts (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-windows
+          if-no-files-found: error
+          path: src-tauri/target/release/app.exe
