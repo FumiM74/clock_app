@@ -27,9 +27,17 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: src-tauri
+          includeRelease: true
+
+      # どこに出たかをログで確認（初回だけ入れておくと便利）
+      - name: Show bundle directory
+        shell: bash
+        run: |
+          ls -la src-tauri/target || true
+          find src-tauri/target -maxdepth 4 -type d -name bundle -print || true
 
       - name: Upload bundles (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: tauri-bundles-${{ matrix.os }}
-          path: src-tauri/target/release/bundle/**
+          path: src-tauri/target/**/bundle/**
