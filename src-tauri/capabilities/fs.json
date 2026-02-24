@@ -1,0 +1,11 @@
+{
+  "identifier": "fs",
+  "description": "permissions for @tauri-apps/plugin-fs",
+  "windows": [
+    "main",
+    "settings"
+  ],
+  "permissions": [
+    "fs:default"
+  ]
+}

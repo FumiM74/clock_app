@@ -1,13 +1,11 @@
 <script>
   import { onMount, tick } from "svelte";
-  import { Store } from "@tauri-apps/plugin-store";
   import { emit } from "@tauri-apps/api/event";
   import { confirm } from "@tauri-apps/plugin-dialog";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { loadSettingsFile, saveSettingsFile } from "../../lib/settings-storage.js";
 
 
-  // 設定永続化用 Store
-  let store;
   let mode = "A";
   
   // デフォルトの時限定義（メイン側と合わせる）
@@ -51,16 +49,26 @@
   // 「✔️」を出すためのフラグ（テンプレートで showCheck を使っている）
   let showCheck = false;
 
-  // 起動時に Store から periods を読む
+  function buildSettingsPayload() {
+    return {
+      mode,
+      periods,
+      presetA,
+      presetB,
+      customPeriods
+    };
+  }
+
+  // 起動時に設定ファイルから periods を読む
   onMount(async () => {
     try {
-      store = await Store.load("settings.json");
-      const storedMode = await store.get("mode");
-      const stored = await store.get("periods");
-      const storedA = await store.get("presetA");
-      const storedB = await store.get("presetB");
-      const storedCustom = await store.get("customPeriods");
-      console.log("📦 settings画面: Storeから取得したperiods:", stored);
+      const settings = await loadSettingsFile();
+      const storedMode = settings?.mode;
+      const stored = settings?.periods;
+      const storedA = settings?.presetA;
+      const storedB = settings?.presetB;
+      const storedCustom = settings?.customPeriods;
+      console.log("📦 settings画面: settings.jsonから取得したperiods:", stored);
 
       if (storedMode === "A" || storedMode === "B" || storedMode === "custom") {
         mode = storedMode;
@@ -80,7 +88,7 @@
       }
 
     } catch (e) {
-      console.error("⚠️ settings画面: Storeの読み込みに失敗。デフォルト値を使用します。", e);
+      console.error("⚠️ settings画面: 設定ファイルの読み込みに失敗。デフォルト値を使用します。", e);
     }
   });
 
@@ -98,10 +106,7 @@
   
   async function autoSave() {
     try {
-      if (!store) store = await Store.load("settings.json");
-      await store.set("mode", mode);
-      await store.set("periods", periods);
-      await store.save();
+      await saveSettingsFile(buildSettingsPayload());
       await emit("update-periods", periods);
       showCheck = true;
       setTimeout(() => { showCheck = false; }, 1000);
@@ -114,21 +119,15 @@
   // 保存ボタン用（テンプレートの on:click={sendPeriods} と対応）
   async function sendPeriods() {
     try {
-      if (!store) {
-        store = await Store.load("settings.json");
-      }
-
-      // 1. Store に保存（選択中モードの内容を恒久化）
-      if (mode === "A") { presetA = deepCopyPeriods(periods); await store.set("presetA", presetA); await store.set("periods", presetA); }
-      else if (mode === "B") { presetB = deepCopyPeriods(periods); await store.set("presetB", presetB); await store.set("periods", presetB); }
+      // 1. 設定ファイルに保存（選択中モードの内容を恒久化）
+      if (mode === "A") { presetA = deepCopyPeriods(periods); periods = deepCopyPeriods(presetA); }
+      else if (mode === "B") { presetB = deepCopyPeriods(periods); periods = deepCopyPeriods(presetB); }
       else {
         customPeriods = deepCopyPeriods(periods);
-        await store.set("customPeriods", customPeriods); // customはここに保存して記憶
-        await store.set("periods", periods);            // 現在適用中としても保存（メイン反映用）
+        periods = deepCopyPeriods(customPeriods);      // 現在適用中として保存（メイン反映用）
       }      
-      await store.set("mode", mode);
-      await store.save();
-      console.log("settings画面: periods を Store に保存しました:", periods);
+      await saveSettingsFile(buildSettingsPayload());
+      console.log("settings画面: periods を settings.json に保存しました:", periods);
 
       // 2. メイン画面に通知（メイン側で listen("update-periods") している前提）
       await emit("update-periods", periods); // ← payloadは変えない（メイン側修正不要）
@@ -143,13 +142,11 @@
     }
   }
 
-  // 初期化：Storeをクリアして「インストール直後の状態」に戻す（ファイルは残る）
+  // 初期化：設定ファイルを初期状態で上書きして戻す
   async function resetSettings() {
     const ok = await confirm("時間設定を初期化します。よろしいですか？");
     if (!ok) return;
     try {
-      if (!store) store = await Store.load("settings.json");
-      await store.clear();
       presetA = deepCopyPeriods(PRESET_A);
       presetB = deepCopyPeriods(PRESET_B);
       customPeriods = deepCopyPeriods(PRESET_A);

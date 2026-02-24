@@ -21,7 +21,7 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["default", "store"]
+      "capabilities": ["default", "fs"]
     }
   },
   "bundle": {

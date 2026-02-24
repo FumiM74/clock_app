@@ -1,10 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
-  import { Store } from "@tauri-apps/plugin-store";
-
-  // ★追加：設定永続化用の Store インスタンス
-  let store;
+  import { loadSettingsFile } from "../lib/settings-storage.js";
 
   let time = "";
   let period = "";
@@ -128,11 +125,11 @@
   }
 
   onMount(async () => {
-    // ★変更ポイント①：起動時に Store から periods を読み込む
+    // 起動時にローカル設定JSONから periods を読み込む
     try {
-      store = await Store.load("settings.json");
-      const stored = await store.get("periods");
-      console.log("📦 Storeから取得したperiods:", stored);
+      const settings = await loadSettingsFile();
+      const stored = settings?.periods;
+      console.log("📦 settings.jsonから取得したperiods:", stored);
 
       if (Array.isArray(stored) && stored.length > 0) {
         basePeriods = stored;
@@ -140,7 +137,7 @@
         console.warn("⚠️ 設定が未保存または不正な形式です。デフォルト値を使用します。");
       }
     } catch (e) {
-      console.error("⚠️ Storeの読み込みに失敗しました。デフォルト値を使用します。", e);
+      console.error("⚠️ 設定ファイルの読み込みに失敗しました。デフォルト値を使用します。", e);
     }
 
     // ここで一度だけ展開
