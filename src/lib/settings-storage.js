@@ -1,8 +1,9 @@
-import { join, localDataDir } from "@tauri-apps/api/path";
+import { BaseDirectory, join, localDataDir } from "@tauri-apps/api/path";
 import { mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 const APP_SETTINGS_DIR_NAME = "clock_app";
 const SETTINGS_FILE_NAME = "settings.json";
+const SETTINGS_RELATIVE_PATH = `${APP_SETTINGS_DIR_NAME}/${SETTINGS_FILE_NAME}`;
 
 async function getSettingsPaths() {
   const localDir = await localDataDir();
@@ -12,14 +13,17 @@ async function getSettingsPaths() {
 }
 
 async function ensureSettingsDir() {
-  const { dirPath } = await getSettingsPaths();
-  await mkdir(dirPath, { recursive: true });
+  await mkdir(APP_SETTINGS_DIR_NAME, {
+    baseDir: BaseDirectory.LocalData,
+    recursive: true
+  });
 }
 
 export async function loadSettingsFile() {
   try {
-    const { filePath } = await getSettingsPaths();
-    const raw = await readTextFile(filePath);
+    const raw = await readTextFile(SETTINGS_RELATIVE_PATH, {
+      baseDir: BaseDirectory.LocalData
+    });
     return JSON.parse(raw);
   } catch (e) {
     return null;
@@ -28,8 +32,9 @@ export async function loadSettingsFile() {
 
 export async function saveSettingsFile(data) {
   await ensureSettingsDir();
-  const { filePath } = await getSettingsPaths();
-  await writeTextFile(filePath, JSON.stringify(data));
+  await writeTextFile(SETTINGS_RELATIVE_PATH, JSON.stringify(data), {
+    baseDir: BaseDirectory.LocalData
+  });
 }
 
 export async function getSettingsFilePath() {

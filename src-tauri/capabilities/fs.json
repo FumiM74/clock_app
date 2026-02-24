@@ -6,6 +6,8 @@
     "settings"
   ],
   "permissions": [
-    "fs:default"
+    "fs:default",
+    "fs:allow-localdata-read-recursive",
+    "fs:allow-localdata-write-recursive"
   ]
 }
