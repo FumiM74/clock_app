@@ -8,7 +8,7 @@
 
   let time = "";
   let period = "";
-  let minutesLeft = "";
+  let minutesLeft = null;
 
   // デフォルトの時限定義（起動時・Storeに何もないとき用）
   let basePeriods = [
@@ -22,7 +22,7 @@
 
   let periods = [];
 
-  // 拡張関数：休憩・昼休み・放課後を自動挿入
+  // 拡張関数：休憩・昼休みを自動挿入
   function expandPeriods(base) {
     const expanded = [];
 
@@ -51,16 +51,6 @@
       }
     }
 
-    // 放課後を追加
-    const last = base[base.length - 1];
-    if (last) {
-      expanded.push({
-        label: "放課後",
-        start: last.end,
-        end: "23:59"
-      });
-    }
-
     return expanded;
   }
 
@@ -72,8 +62,9 @@
     const minute = now.getMinutes();
     const totalMinutes = hour * 60 + minute;
 
-    period = "放課後";
-    minutesLeft = "";
+    period = "";
+    minutesLeft = null;
+    let matched = false;
 
     for (const p of periods) {
       const [startH, startM] = p.start.split(":").map(Number);
@@ -84,7 +75,26 @@
       if (totalMinutes >= startMin && totalMinutes < endMin) {
         period = p.label;
         minutesLeft = endMin - totalMinutes;
+        matched = true;
         break;
+      }
+    }
+
+    if (!matched) {
+      const [firstH, firstM] = (basePeriods[0]?.start ?? "08:55").split(":").map(Number);
+      const firstPeriodStartMin = firstH * 60 + firstM;
+
+      // 20:01〜23:59 / 00:00〜06:00
+      if (totalMinutes >= 1201 || totalMinutes <= 360) {
+        period = "-----";
+      }
+      // 06:01〜1限開始前
+      else if (totalMinutes >= 361 && totalMinutes < firstPeriodStartMin) {
+        period = "始業前";
+      }
+      // それ以外の未一致時間帯（6限終了後〜20:00など）
+      else {
+        period = "放課後";
       }
     }
   }
@@ -175,7 +185,7 @@
     {time}
     {#if period}
       {'\n'}{period}
-      {#if period !== "放課後"}
+      {#if minutesLeft !== null}
         {'\n'}<span style="font-size: 0.7em; position: relative; top: -6px;">あと</span><span style="position: relative; top: -6px;">{minutesLeft} </span><span style="font-size: 0.7em; position: relative; top: -6px;">分</span>
       {/if}
     {/if}
