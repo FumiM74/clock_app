@@ -8,7 +8,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            tauri_args: --bundles app,dmg
+            artifact_name: tauri-macos
+            artifact_path: |
+              src-tauri/target/release/bundle/macos/**
+              src-tauri/target/release/bundle/dmg/**
+          - os: windows-latest
+            tauri_args: --bundles nsis
+            artifact_name: tauri-windows-nsis
+            artifact_path: |
+              src-tauri/target/release/bundle/nsis/**
+              setup_clock_app.bat
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -28,21 +40,11 @@ jobs:
         with:
           projectPath: src-tauri
           includeRelease: true
+          args: ${{ matrix.tauri_args }}
 
-      # macOS: （dmg/app等）バンドルが出る想定
-      - name: Upload artifacts (macOS)
-        if: runner.os == 'macOS'
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-macos
+          name: ${{ matrix.artifact_name }}
           if-no-files-found: error
-          path: src-tauri/target/**/bundle/**
-
-      # Windows: ポータブル本体だけ（ビルドスクリプト等を拾わない）
-      - name: Upload artifacts (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tauri-windows
-          if-no-files-found: error
-          path: src-tauri/target/release/app.exe
+          path: ${{ matrix.artifact_path }}

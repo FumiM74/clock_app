@@ -8,6 +8,8 @@
   "permissions": [
     "fs:default",
     "fs:allow-localdata-read-recursive",
-    "fs:allow-localdata-write-recursive"
+    "fs:allow-localdata-write-recursive",
+    "fs:allow-exe-read-recursive",
+    "fs:allow-exe-write-recursive"
   ]
 }
