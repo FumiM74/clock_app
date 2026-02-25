@@ -18,9 +18,7 @@ jobs:
           - os: windows-latest
             tauri_args: --bundles nsis
             artifact_name: tauri-windows-nsis
-            artifact_path: |
-              src-tauri/target/release/bundle/nsis/**
-              setup_clock_app.bat
+            artifact_path: dist-windows/**
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -41,6 +39,16 @@ jobs:
           projectPath: src-tauri
           includeRelease: true
           args: ${{ matrix.tauri_args }}
+
+      - name: Prepare Windows artifact (flat layout)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-windows | Out-Null
+          $installer = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "NSIS installer not found." }
+          Copy-Item "setup_clock_app.bat" "dist-windows/setup_clock_app.bat" -Force
+          Copy-Item $installer.FullName "dist-windows/$($installer.Name)" -Force
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
