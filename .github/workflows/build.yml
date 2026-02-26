@@ -45,10 +45,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist-windows | Out-Null
-          $installer = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+          $installer = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" | Select-Object -First 1
           if (-not $installer) { throw "NSIS installer not found." }
           Copy-Item "setup_clock_app.bat" "dist-windows/setup_clock_app.bat" -Force
-          Copy-Item $installer.FullName "dist-windows/$($installer.Name)" -Force
+          Copy-Item $installer.FullName "dist-windows/clock_app_setup.exe" -Force
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

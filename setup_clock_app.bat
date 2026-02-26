@@ -3,10 +3,15 @@ setlocal EnableExtensions
 
 set "APP_DIR=%LOCALAPPDATA%\clock_app"
 set "SCRIPT_DIR=%~dp0"
+set "EXE_NAME=clock_app_setup.exe"
 set "INSTALLER_PATH=%~1"
 set "COPIED_INSTALLER="
 
 if not defined INSTALLER_PATH (
+  if exist "%SCRIPT_DIR%%EXE_NAME%" (
+    set "INSTALLER_PATH=%SCRIPT_DIR%%EXE_NAME%"
+    goto :found_installer
+  )
   for %%F in ("%SCRIPT_DIR%clock_app*setup*.exe") do (
     if /I not "%%~fF"=="%~f0" (
       set "INSTALLER_PATH=%%~fF"
@@ -23,7 +28,9 @@ if not defined INSTALLER_PATH (
 
 :found_installer
 if not defined INSTALLER_PATH (
-  echo Installer not found. Put this bat file and the NSIS installer (.exe) in the same folder.
+  echo Installer not found.
+  echo Expected file: %EXE_NAME%
+  echo Put this bat file and the NSIS installer (.exe) in the same folder.
   echo You can also pass the installer path as the first argument.
   pause
   exit /b 1
