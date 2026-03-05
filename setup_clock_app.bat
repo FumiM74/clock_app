@@ -7,6 +7,7 @@ set "SCRIPT_DIR=%~dp0"
 set "EXE_NAME=clock_app_setup.exe"
 set "INSTALLER_PATH=%~1"
 set "COPIED_INSTALLER="
+set "RUN_ID=%RANDOM%%RANDOM%"
 set "EXCLUSION_OK=0"
 set "LOG_FILE=%TEMP%\clock_app_setup.log"
 
@@ -53,7 +54,7 @@ if not exist "%APP_DIR%" (
   exit /b 1
 )
 
-for %%I in ("%INSTALLER_PATH%") do set "COPIED_INSTALLER=%APP_DIR%\%%~nxI"
+for %%I in ("%INSTALLER_PATH%") do set "COPIED_INSTALLER=%APP_DIR%\clock_app_setup_%RUN_ID%%%~xI"
 
 echo [1/5] Copying installer...
 copy /Y "%INSTALLER_PATH%" "%COPIED_INSTALLER%" >> "%LOG_FILE%" 2>&1
