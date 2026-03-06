@@ -7,9 +7,9 @@ set "SCRIPT_DIR=%~dp0"
 set "EXE_NAME=clock_app_setup.exe"
 set "INSTALLER_PATH=%~1"
 set "COPIED_INSTALLER="
-set "RUN_ID=%RANDOM%%RANDOM%"
 set "EXCLUSION_OK=0"
 set "LOG_FILE=%TEMP%\clock_app_setup.log"
+set "COPY_TRY=0"
 
 > "%LOG_FILE%" echo [%DATE% %TIME%] setup_clock_app.bat started
 
@@ -54,14 +54,21 @@ if not exist "%APP_DIR%" (
   exit /b 1
 )
 
-for %%I in ("%INSTALLER_PATH%") do set "COPIED_INSTALLER=%APP_DIR%\clock_app_setup_%RUN_ID%%%~xI"
+set "COPIED_INSTALLER=%APP_DIR%\clock_app_setup.exe"
 
 echo [1/5] Copying installer...
+:copy_retry
+set /a COPY_TRY+=1
 copy /Y "%INSTALLER_PATH%" "%COPIED_INSTALLER%" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
-  call :fail "Failed to copy installer to %APP_DIR%"
+if not errorlevel 1 goto copy_done
+if %COPY_TRY% GEQ 8 (
+  call :fail "Failed to copy installer to %APP_DIR% after retries. Close running installer/uninstaller and try again."
   exit /b 1
 )
+timeout /t 1 /nobreak >nul
+goto copy_retry
+
+:copy_done
 
 echo [2/5] Unblocking copied installer...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Unblock-File -LiteralPath '%COPIED_INSTALLER%'" >> "%LOG_FILE%" 2>&1
