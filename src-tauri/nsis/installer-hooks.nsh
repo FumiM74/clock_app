@@ -9,7 +9,10 @@
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-  ; Best-effort cleanup: remove all remaining files under %LOCALAPPDATA%\clock_app
-  ; including installer leftovers copied by setup_clock_app.bat.
-  RMDir /r /REBOOTOK "$LOCALAPPDATA\clock_app"
+  ; Safe cleanup: remove known leftovers only.
+  ; Avoid recursive force-delete here because uninstall internals may still be active.
+  Delete "$LOCALAPPDATA\clock_app\clock_app_setup*.exe"
+  Delete "$LOCALAPPDATA\clock_app\setup_clock_app.bat"
+  Delete "$LOCALAPPDATA\clock_app\settings.json"
+  RMDir /REBOOTOK "$LOCALAPPDATA\clock_app"
 !macroend
