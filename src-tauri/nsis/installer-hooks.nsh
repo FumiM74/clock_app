@@ -14,7 +14,8 @@
 !macro NSIS_HOOK_POSTUNINSTALL
   ; Remove Tauri app data folder (logs, cache, etc.)
   RMDir /r "$LOCALAPPDATA\clockapp.local"
-  ; Remove install folder including leftover files (settings.json, installer copy, etc.)
-  ; uninstall.exe has already been deleted by this point, so this is safe.
-  RMDir /r "$INSTDIR"
+  ; Delete runtime files not tracked by NSIS.
+  ; After this, NSIS deletes uninstall.exe and calls RMDir on the now-empty $INSTDIR.
+  Delete "$INSTDIR\settings.json"
+  Delete "$INSTDIR\clock_app_setup.exe"
 !macroend
