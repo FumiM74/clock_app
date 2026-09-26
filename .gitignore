@@ -27,5 +27,6 @@ target/
 .DS_Store
 Thumbs.db
 
-# Claude Code memory
+# memory
 memory/
+.md
